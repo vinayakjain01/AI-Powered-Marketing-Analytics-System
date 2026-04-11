@@ -1,0 +1,19 @@
+# Core
+pandas
+numpy
+
+# Database
+psycopg2-binary
+
+# UI
+streamlit
+
+# LLM APIs
+openai
+google-generativeai
+
+# Environment variables
+python-dotenv
+
+# Optional (better SQL handling / performance)
+sqlalchemy
