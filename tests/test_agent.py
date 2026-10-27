@@ -99,3 +99,21 @@ def test_persistent_rate_limit_raises_a_clear_error(tools, monkeypatch):
     monkeypatch.setattr(agent_mod.time, "sleep", lambda s: None)
     with pytest.raises(agent_mod.RateLimitedError):
         Text2SQLAgent(tools, client, "fake").ask("hello there")
+
+
+def test_transient_503_is_retried(tools, monkeypatch):
+    import agent.agent as agent_mod
+
+    class Unavailable(Exception):
+        code = 503
+    client = FakeGemini([text("recovered")])
+    real, state = client.models.generate_content, {"n": 0}
+
+    def flaky(**kw):
+        state["n"] += 1
+        if state["n"] == 1:
+            raise Unavailable("503 UNAVAILABLE")
+        return real(**kw)
+    client.models.generate_content = flaky
+    monkeypatch.setattr(agent_mod.time, "sleep", lambda s: None)
+    assert Text2SQLAgent(tools, client, "fake").ask("hello there").answer == "recovered"

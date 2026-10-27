@@ -109,18 +109,25 @@ def _retry_delay_s(exc: Exception, default: float = 12.0) -> float:
 
 
 def generate_with_retry(client, *, retries: int = 5, max_wait_s: float = 65.0, **kwargs):
-    """client.models.generate_content, waiting out 429 rate limits instead of failing the question."""
+    """client.models.generate_content, riding out rate limits (429) and transient server errors."""
     for attempt in range(retries + 1):
         try:
             return client.models.generate_content(**kwargs)
-        except Exception as e:  # google.genai.errors.ClientError carries .code == 429
-            if getattr(e, "code", None) != 429 and "RESOURCE_EXHAUSTED" not in str(e):
+        except Exception as e:  # google.genai.errors.APIError carries .code
+            code = getattr(e, "code", None)
+            quota = code == 429 or "RESOURCE_EXHAUSTED" in str(e)
+            transient = code in (500, 502, 503, 504) or any(s in str(e) for s in ("UNAVAILABLE", "DEADLINE_EXCEEDED"))
+            if not (quota or transient):
                 raise
-            delay = _retry_delay_s(e)
-            if attempt == retries or delay > max_wait_s:  # a long delay means a daily quota: do not wait
+            delay = _retry_delay_s(e, default=12.0) if quota else min(2.0 * 2 ** attempt, 20.0)
+            if quota and delay > max_wait_s:  # a long delay means a daily quota: do not wait
                 raise RateLimitedError(
                     "The AI model's quota is used up (Gemini free tier). "
                     f"Retry in about {max(1, round(delay / 60))} min, or set GEMINI_MODEL to another model.") from e
+            if attempt == retries:
+                if quota:
+                    raise RateLimitedError("The AI model's rate limit was hit. Please retry in a minute.") from e
+                raise RateLimitedError("The AI model is temporarily unavailable. Please try again shortly.") from e
             time.sleep(delay)
 
 
