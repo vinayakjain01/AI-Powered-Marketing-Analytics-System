@@ -1,0 +1,20 @@
+.git
+.github
+.env
+.venv
+node_modules
+frontend/node_modules
+frontend/src
+frontend/public
+tests
+Data
+Power BI
+Airtable
+Python
+docs
+reference
+*.pdf
+*.png
+*.db
+__pycache__
+.pytest_cache
