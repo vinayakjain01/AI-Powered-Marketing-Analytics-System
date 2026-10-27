@@ -1,0 +1,12 @@
+.env
+*.db
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+frontend/dist/
+.vscode/
+.ipynb_checkpoints/
+reference/
