@@ -15,9 +15,11 @@ export function Card({ title, actions, children }: { title?: string; actions?: R
   );
 }
 
-export function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
+export type Tone = "primary" | "teal" | "gold" | "coral" | "amber" | "lilac";
+
+export function Kpi({ label, value, hint, tone = "primary" }: { label: string; value: string; hint?: string; tone?: Tone }) {
   return (
-    <div className="card kpi">
+    <div className={`card kpi tone-${tone}`}>
       <div className="label">{label}</div>
       <div className="value">{value}</div>
       {hint && <div className="hint">{hint}</div>}

@@ -29,7 +29,7 @@ export default function Schema() {
         <div className="filters">
           <label className="field" style={{ flex: 1, minWidth: 240 }}>Question
             <span style={{ position: "relative", display: "block" }}>
-              <Search size={16} aria-hidden style={{ position: "absolute", left: 10, top: 11, color: "var(--muted)" }} />
+              <Search size={16} aria-hidden style={{ position: "absolute", left: 10, top: 11, color: "var(--text-muted)" }} />
               <input className="text-input" style={{ paddingLeft: 32, width: "100%" }} value={q} onChange={(e) => run(e.target.value)} placeholder="Type a business question…" />
             </span>
           </label>

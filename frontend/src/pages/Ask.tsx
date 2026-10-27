@@ -53,8 +53,8 @@ export default function Ask() {
       )}
 
       {turns.length === 0 && (
-        <div style={{ textAlign: "center", padding: "36px 0 24px" }}>
-          <h1 style={{ fontSize: 26 }}>Ask your marketing data anything</h1>
+        <div className="hero" style={{ textAlign: "center", padding: "36px 0 24px" }}>
+          <h1>Ask your marketing data anything</h1>
           <p className="muted" style={{ maxWidth: 560, margin: "10px auto 20px" }}>
             An AI agent finds the right tables, writes read-only SQL, fixes its own mistakes, and explains the result.
             Every step is shown so you can check it.
@@ -130,9 +130,9 @@ function AnswerCard({ r }: { r: AskResponse }) {
               <ResponsiveContainer>
                 <BarChart data={chart.data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="label" stroke="var(--muted)" fontSize={11} interval={0} />
-                  <YAxis stroke="var(--muted)" fontSize={12} width={70} />
-                  <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 10 }} cursor={{ fill: "var(--accent-soft)" }} />
+                  <XAxis dataKey="label" stroke="var(--text-muted)" fontSize={11} interval={0} />
+                  <YAxis stroke="var(--text-muted)" fontSize={12} width={70} />
+                  <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10 }} cursor={{ fill: "var(--primary-soft)" }} />
                   <Bar isAnimationActive={false} dataKey="value" name={chart.valueKey} fill="var(--c1)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

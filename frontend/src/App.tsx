@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Database, MessageSquareText, TrendingUp } from "lucide-react";
+import { BarChart3, Database, MessageSquareText } from "lucide-react";
 import Ask from "./pages/Ask";
 import Dashboard from "./pages/Dashboard";
 import Schema from "./pages/Schema";
@@ -28,7 +28,10 @@ export default function App() {
   return (
     <div className="shell">
       <header className="topbar">
-        <div className="brand"><span className="brand-mark"><TrendingUp size={18} aria-hidden /></span>Marketing Insights</div>
+        <div className="brand">
+          <span className="brand-mark" aria-hidden>MI</span>
+          <div><div className="brand-name">Marketing Insights</div><div className="brand-sub">Ads and store performance, with an AI analyst</div></div>
+        </div>
         <nav className="tabs" aria-label="Main">
           {PAGES.map(({ id, label, icon: Icon }) => (
             <button key={id} className="tab" aria-current={page === id ? "page" : undefined}

@@ -7,10 +7,10 @@ import { compactINR, num, pct, ratio } from "../format";
 import { useAsync } from "../useAsync";
 import { Card, ErrorNote, Kpi, Segmented, Skeleton } from "../components/ui";
 
-const AXIS = { stroke: "var(--muted)", fontSize: 12 } as const;
+const AXIS = { stroke: "var(--text-muted)", fontSize: 12 } as const;
 const TOOLTIP = {
-  contentStyle: { background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text)" },
-  labelStyle: { color: "var(--muted)" },
+  contentStyle: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text)" },
+  labelStyle: { color: "var(--text-secondary)" },
 } as const;
 
 type Grain = "day" | "week" | "month";
@@ -92,23 +92,23 @@ export default function Dashboard() {
       <h3 className="section-title">Ad performance (Meta Ads)</h3>
       {kpis.error ? <ErrorNote error={kpis.error} /> : (
         <div className="grid kpis">
-          <Kpi label="Ad spend" value={a ? compactINR(a.spend) : "…"} />
-          <Kpi label="Ad-attributed revenue" value={a ? compactINR(a.revenue) : "…"} />
-          <Kpi label="ROAS" value={a ? ratio(a.roas, 2, "x") : "…"} hint="revenue ÷ spend" />
-          <Kpi label="ROI" value={a ? pct(a.roi, 0) : "…"} hint="(revenue − spend) ÷ spend" />
-          <Kpi label="CPC" value={a ? `₹${ratio(a.cpc)}` : "…"} hint="spend ÷ clicks" />
-          <Kpi label="CTR" value={a ? pct(a.ctr) : "…"} hint="clicks ÷ impressions" />
-          <Kpi label="Purchases" value={a ? num(a.purchases) : "…"} />
+          <Kpi tone="primary" label="Ad spend" value={a ? compactINR(a.spend) : "…"} />
+          <Kpi tone="teal" label="Ad-attributed revenue" value={a ? compactINR(a.revenue) : "…"} />
+          <Kpi tone="teal" label="ROAS" value={a ? ratio(a.roas, 2, "x") : "…"} hint="revenue ÷ spend" />
+          <Kpi tone="amber" label="ROI" value={a ? pct(a.roi, 0) : "…"} hint="(revenue − spend) ÷ spend" />
+          <Kpi tone="coral" label="CPC" value={a ? `₹${ratio(a.cpc)}` : "…"} hint="spend ÷ clicks" />
+          <Kpi tone="gold" label="CTR" value={a ? pct(a.ctr) : "…"} hint="clicks ÷ impressions" />
+          <Kpi tone="lilac" label="Purchases" value={a ? num(a.purchases) : "…"} />
         </div>
       )}
 
       <h3 className="section-title">Store sales (Shopify)</h3>
       <div className="grid kpis">
-        <Kpi label="Net sales" value={s ? compactINR(s.net_sales) : "…"} />
-        <Kpi label="Orders" value={s ? num(s.orders) : "…"} />
-        <Kpi label="Avg order value" value={s ? compactINR(s.aov) : "…"} hint="net sales ÷ orders" />
-        <Kpi label="Discounts" value={s ? compactINR(s.discounts) : "…"} />
-        <Kpi label="Returns" value={s ? compactINR(s.returns) : "…"} />
+        <Kpi tone="primary" label="Net sales" value={s ? compactINR(s.net_sales) : "…"} />
+        <Kpi tone="teal" label="Orders" value={s ? num(s.orders) : "…"} />
+        <Kpi tone="gold" label="Avg order value" value={s ? compactINR(s.aov) : "…"} hint="net sales ÷ orders" />
+        <Kpi tone="amber" label="Discounts" value={s ? compactINR(s.discounts) : "…"} />
+        <Kpi tone="coral" label="Returns" value={s ? compactINR(s.returns) : "…"} />
       </div>
       <p className="muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
         Store figures include a few very large rows in the source export, so averages such as AOV can look high.
@@ -129,9 +129,9 @@ export default function Dashboard() {
                 <YAxis {...AXIS} tickFormatter={(v) => compactINR(v)} width={70} />
                 <Tooltip {...TOOLTIP} formatter={(v) => compactINR(Number(v))} />
                 <Legend />
-                <Line isAnimationActive={false} type="monotone" dataKey="spend" name="Ad spend" stroke="var(--c2)" strokeWidth={2} dot={false} />
-                <Line isAnimationActive={false} type="monotone" dataKey="revenue" name="Ad revenue" stroke="var(--c1)" strokeWidth={2} dot={false} />
-                <Line isAnimationActive={false} type="monotone" dataKey="net_sales" name="Store net sales" stroke="var(--c3)" strokeWidth={2} dot={false} />
+                <Line isAnimationActive={false} type="monotone" dataKey="spend" name="Ad spend" stroke="var(--c2)" strokeWidth={2.5} dot={false} />
+                <Line isAnimationActive={false} type="monotone" dataKey="revenue" name="Ad revenue" stroke="var(--c1)" strokeWidth={2.5} dot={false} />
+                <Line isAnimationActive={false} type="monotone" dataKey="net_sales" name="Store net sales" stroke="var(--c3)" strokeWidth={2.5} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -206,9 +206,9 @@ function BreakdownChart({ state, cols }: {
       <ResponsiveContainer>
         <BarChart data={state.data.rows} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
-          <XAxis dataKey="label" {...AXIS} interval={0} tick={{ fontSize: 11, fill: "var(--muted)" }} />
+          <XAxis dataKey="label" {...AXIS} interval={0} tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
           <YAxis {...AXIS} tickFormatter={(v) => compactINR(v)} width={70} />
-          <Tooltip {...TOOLTIP} formatter={(v) => compactINR(Number(v))} cursor={{ fill: "var(--accent-soft)" }} />
+          <Tooltip {...TOOLTIP} formatter={(v) => compactINR(Number(v))} cursor={{ fill: "var(--primary-soft)" }} />
           <Legend />
           {cols.map((c) => <Bar isAnimationActive={false} key={c.k} dataKey={c.k} name={c.name} fill={c.color} radius={[4, 4, 0, 0]} />)}
         </BarChart>
