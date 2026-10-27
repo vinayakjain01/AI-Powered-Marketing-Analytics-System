@@ -10,3 +10,6 @@ frontend/dist/
 .vscode/
 .ipynb_checkpoints/
 reference/
+*.log
+*.err
+ask.out
