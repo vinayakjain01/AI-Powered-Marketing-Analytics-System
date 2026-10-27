@@ -48,6 +48,11 @@ class SchemaTools:
         self.schema = schema  # only the tables the agent may see (hidden ones already removed)
         self.last_result: dict[str, Any] | None = None
 
+    def fork(self) -> "SchemaTools":
+        """A per-request session: shares the DB, index and schema but has its own last_result,
+        so concurrent API requests cannot read each other's query results."""
+        return SchemaTools(self.db, self.index, self.docs, self.settings, self.schema)
+
     @property
     def last_sql(self) -> str | None:
         return self.last_result["sql"] if self.last_result else None

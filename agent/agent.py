@@ -99,8 +99,10 @@ class Text2SQLAgent:
         self.max_steps = max_steps
         self.max_sql_attempts = max_sql_attempts
 
-    def _result(self, answer: str, trace: list, steps: int, reason: str = "answered") -> AgentResult:
-        last = self.tools.last_result or {}
+    @staticmethod
+    def _result(tools: SchemaTools, answer: str, trace: list, steps: int,
+                reason: str = "answered") -> AgentResult:
+        last = tools.last_result or {}
         sql = last.get("sql") or _extract_sql(answer)
         return AgentResult(answer=answer, sql=sql, trace=trace, steps=steps, stopped_reason=reason,
                            columns=last.get("columns", []), rows=last.get("rows", []),
@@ -109,7 +111,7 @@ class Text2SQLAgent:
     def ask(self, question: str) -> AgentResult:
         from google.genai import types
 
-        self.tools.last_result = None
+        tools = self.tools.fork()  # isolated session: safe under concurrent requests
         config = types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             tools=[types.Tool(function_declarations=_function_declarations())],
@@ -124,14 +126,14 @@ class Text2SQLAgent:
             response = self.client.models.generate_content(model=self.model, contents=contents, config=config)
             calls = response.function_calls or []
             if not calls:
-                return self._result(response.text or "", trace, step)
+                return self._result(tools, response.text or "", trace, step)
 
             contents.append(response.candidates[0].content)
             parts = []
             for call in calls:
                 args = dict(call.args or {})
                 t0 = time.perf_counter()
-                result = self.tools.dispatch(call.name, args)
+                result = tools.dispatch(call.name, args)
                 ok = bool(result.get("ok", True))
                 if call.name == "run_sql" and not ok:
                     sql_failures += 1
@@ -143,11 +145,11 @@ class Text2SQLAgent:
 
             if sql_failures >= self.max_sql_attempts:
                 return self._result(
-                    f"I couldn't produce a working query after {self.max_sql_attempts} attempts. "
+                    tools, f"I couldn't produce a working query after {self.max_sql_attempts} attempts. "
                     "Try rephrasing the question or narrowing it (a metric, a period, a region).",
                     trace, step, "sql_failed")
 
-        return self._result("I couldn't finish within the step limit. Try a more specific question.",
+        return self._result(tools, "I couldn't finish within the step limit. Try a more specific question.",
                             trace, self.max_steps, "max_steps")
 
 

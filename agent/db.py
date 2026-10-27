@@ -58,7 +58,7 @@ class Database:
             out[table] = {"columns": cols, "primary_key": pk, "foreign_keys": fks}
         return out
 
-    def run_read_only(self, sql: str, timeout_ms: int = 10000) -> tuple[list[str], list[list[Any]]]:
+    def run_read_only(self, sql: str, timeout_ms: int = 10000, params: dict | None = None) -> tuple[list[str], list[list[Any]]]:
         """Run a query inside a READ ONLY transaction with a timeout, and always roll back."""
         with self.engine.connect() as conn:
             if self.dialect == "postgres":
@@ -67,7 +67,7 @@ class Database:
             elif self.dialect == "sqlite":
                 conn.execute(text("PRAGMA query_only = ON"))
             try:
-                result = conn.execute(text(sql))
+                result = conn.execute(text(sql), params or {})
                 columns = list(result.keys())
                 rows = [[to_jsonable(v) for v in row] for row in result.fetchall()]
             finally:
