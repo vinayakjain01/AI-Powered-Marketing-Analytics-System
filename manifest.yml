@@ -1,0 +1,14 @@
+# SAP BTP Cloud Foundry. Secrets are NOT here: set them with `cf set-env` (see docs/DEPLOY_BTP.md).
+applications:
+  - name: marketing-insights
+    memory: 512M
+    instances: 1
+    buildpacks:
+      - python_buildpack
+    health-check-type: http
+    health-check-http-endpoint: /api/health
+    timeout: 120
+    command: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    env:
+      EMBEDDINGS: tfidf          # offline retrieval; remove to use Gemini embeddings
+      GEMINI_MODEL: gemini-2.5-flash
