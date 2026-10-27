@@ -1,0 +1,45 @@
+# Retrieval eval: for each question, which tables must search_schema return in its top-k?
+# `expected` = tables genuinely needed to answer. Used by scripts/eval_retrieval.py and CI.
+questions:
+  # --- the README's example questions
+  - q: Which campaign had the worst CPC in March?
+    expected: [fact_ads, dim_campaign, dim_date]
+  - q: Summarise UK region performance
+    expected: [fact_ads, dim_campaign]
+  - q: Top 5 campaigns by ROI
+    expected: [fact_ads, dim_campaign]
+  - q: Compare platform performance
+    expected: [fact_ads, dim_campaign]
+  # --- ads
+  - q: How much did we spend on ads each month?
+    expected: [fact_ads, dim_date]
+  - q: What is the click-through rate for brand a versus brand b?
+    expected: [fact_ads, dim_campaign]
+  - q: Which region has the highest ROAS?
+    expected: [fact_ads, dim_campaign]
+  - q: Show cost per thousand impressions for active campaigns
+    expected: [fact_ads, dim_campaign]
+  - q: How many add to carts and checkouts did retargeting campaigns get?
+    expected: [fact_ads, dim_campaign]
+  - q: Which weekday gets the most ad purchases?
+    expected: [fact_ads, dim_date]
+  # --- shopify
+  - q: What was our total net sales in February?
+    expected: [fact_order_lines, dim_date]
+  - q: Which product type sells the most units?
+    expected: [fact_order_lines, dim_product]
+  - q: How many orders came from returning customers?
+    expected: [fact_order_lines]
+  - q: Compare store revenue by sales channel
+    expected: [fact_order_lines]
+  - q: What are the top 10 products by net sales?
+    expected: [fact_order_lines, dim_product]
+  - q: How much did we give in discounts and refunds by country?
+    expected: [fact_order_lines]
+  - q: What is the average order value in each region?
+    expected: [fact_order_lines]
+  # --- cross-source
+  - q: Compare Shopify revenue with ad-attributed revenue by month
+    expected: [fact_order_lines, fact_ads, dim_date]
+  - q: Is ad spend growing faster than store sales?
+    expected: [fact_order_lines, fact_ads]

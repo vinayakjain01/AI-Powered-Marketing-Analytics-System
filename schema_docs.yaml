@@ -1,0 +1,110 @@
+# Business descriptions for every table and column in the campaign_data warehouse.
+# This file is what the RAG index searches (good descriptions = the agent picks the right tables)
+# and what get_schema shows the model. Grounded in the real data (distinct values checked).
+# Entries marked TODO need an owner to confirm - scripts/draft_schema_docs.py adds new ones.
+
+# Tables the agent must never see or query (raw staging copies and the Power BI view).
+hidden: [staging_ads, staging_shopify, vw_marketing_performance]
+
+tables:
+  fact_ads:
+    description: >
+      Daily Meta Ads performance, one row per date and campaign/ad/region combination.
+      Use for ad spend, impressions, clicks, add to carts, checkouts, purchases, ad-attributed
+      revenue and the efficiency ratios CTR, CPC, CPM, ROAS and ROI. Join dim_campaign on
+      campaign_id and dim_date on date_id. Ratios must be recomputed from SUMs.
+    synonyms: [ads performance, ad spend, marketing spend, campaign performance, meta ads, facebook ads, advertising, ROAS, ROI, CTR, CPC, CPM, clicks, impressions, conversions, cost per click]
+    columns:
+      date_id: Calendar date of the ad activity (FK to dim_date.date_id).
+      campaign_id: FK to dim_campaign.campaign_id (one campaign/ad set/ad/region/brand combination).
+      amount_spent: Money spent on ads in INR. Also called spend, cost, budget, ad spend.
+      fb_spent_funnel: TODO confirm meaning - Meta "spent" figure attributed to the funnel; it is lower than amount_spent in total. Do not use for spend questions; use amount_spent.
+      impressions: Number of times ads were shown. Also called reach or views.
+      clicks: All clicks on the ad (Meta "Clicks (all)"). Use as the denominator for CPC and numerator for CTR.
+      link_clicks: Clicks on links that lead to the website (a subset of clicks).
+      landing_page_views: Link clicks where the landing page finished loading.
+      adds_to_cart: Number of add-to-cart events attributed to the ads.
+      checkouts_initiated: Number of checkouts started (funnel step after add to cart).
+      adds_payment_info: Number of times payment info was added (funnel step after checkout).
+      purchases: Number of purchases attributed to the ads. Also called conversions, orders from ads.
+      purchase_value: Revenue in INR from ad-attributed purchases. Also called revenue, sales value, GMV, conversion value.
+      ctr: DO NOT USE FOR AGGREGATES - average of per-row ratios. Compute SUM(clicks)/NULLIF(SUM(impressions),0).
+      cpm: DO NOT USE FOR AGGREGATES. Compute SUM(amount_spent)/NULLIF(SUM(impressions),0)*1000.
+      cpc: DO NOT USE FOR AGGREGATES. Compute SUM(amount_spent)/NULLIF(SUM(clicks),0).
+      roi: DO NOT USE FOR AGGREGATES - average of per-row ROAS (revenue / spend). Compute from SUMs.
+
+  dim_campaign:
+    description: >
+      One row per campaign / ad set / ad / region / brand combination. Use to group or filter ad
+      metrics by campaign, ad set (audience), ad creative, brand, country or region, and campaign
+      status. All text values are lowercase. Funnel stage appears as a token inside campaign_name
+      (see campaign_name). Null means the raw export had no value.
+    synonyms: [campaigns, ad sets, ads, creatives, audiences, brands, regions, markets, countries, funnel, campaign status, platform]
+    columns:
+      campaign_id: Surrogate primary key.
+      campaign_name: "Campaign name as exported, pipe-separated, e.g. 'growify | tof | conversion | india'. Analysts put the funnel stage in it: tof (top of funnel, prospecting), mof (middle), bof (bottom), retarget (retargeting). TODO confirm the stage convention with the media team."
+      campaign_status: "Delivery status: 'active' or 'paused' (latest status seen for the ad)."
+      ad_set_name: Ad set, i.e. the audience/targeting, e.g. 'ecomm | retargeting', 'ecomm | women'. Often null.
+      ad_name: Individual ad creative name, e.g. 'video | ... | copy'. Often null.
+      sales_platform: LEGACY duplicate of brand, kept so Power BI keeps working. It holds the BRAND ('brand a'/'brand b'), not a platform. Prefer brand.
+      brand: Which brand the ads belong to, 'brand a' or 'brand b' (from the export's Data Source name). Null for some rows.
+      country_funnel: Target country, e.g. 'india', 'united states', 'canada', 'united kingdom', 'saudi arabia', 'australia', 'united arab emirates'.
+      geo_location_segment: Region group - one of 'india', 'usa', 'middle east', 'rest of the world'. Use for region questions ("UK region" is inside 'rest of the world'; filter country_funnel for a single country).
+
+  dim_date:
+    description: >
+      Calendar dimension (2023-2027). Use for any time filter or trend: year, quarter, month
+      (integer 1-12), month name, week, day of week. Data in the warehouse covers January to
+      March 2026 (Shopify has a few December 2025 rows).
+    synonyms: [calendar, time, month, year, quarter, week, day, date, period]
+    columns:
+      date_id: Calendar date, primary key. Joined from fact_ads.date_id and fact_order_lines.date_id.
+      day: Day of month, 1-31.
+      week: ISO week number.
+      month: Month as an INTEGER 1-12 (March = 3). Filter on this, not on the name.
+      quarter: Quarter 1-4.
+      year: Four-digit year.
+      day_name: Weekday name, e.g. 'Monday' (trimmed, capitalised).
+      month_name: Month name, e.g. 'March' (trimmed, capitalised).
+
+  fact_order_lines:
+    description: >
+      Shopify store sales, one row per exported date / order / product line (rows are
+      pre-aggregated, so use SUM(orders) for order counts, not COUNT(*)). Use for store revenue,
+      net sales, gross sales, discounts, returns, items sold, orders, new vs returning customers,
+      sales channel, and sales by product, country or region. This is store revenue, separate
+      from the ad-attributed revenue in fact_ads. Contains a few very large rows (outliers).
+    synonyms: [shopify, sales, store sales, orders, revenue, GMV, net sales, gross sales, discounts, returns, refunds, products, customers, new customers, returning customers, AOV, average order value, sales channel, items sold, units]
+    columns:
+      order_line_id: Surrogate primary key.
+      date_id: Order date (FK to dim_date). Taken from the export Date, falling back to the order-created time.
+      product_key: FK to dim_product.product_key.
+      brand: Brand that sold the item, 'brand a' or 'brand b'. Null for some rows.
+      sales_channel: "Where the order came from: 'magic checkout - brand a', 'draft orders', 'online store', 'whatsapp marketing & broadcast'."
+      country: Customer billing/target country, lowercase (e.g. 'india', 'united states', 'canada').
+      geo_location_segment: Region group - 'india', 'usa', 'middle east', 'rest of the world'.
+      customer_sale_type: "'first-time' or 'returning' customer for the order."
+      order_id: Shopify order id (precision-limited in the export; use SUM(orders) for counts).
+      order_name: Human order number like '#1053'. Often null.
+      gross_sales: Sales before discounts and returns, INR.
+      discounts: Discounts given, INR.
+      returns: Value of returned items, INR.
+      net_sales: Gross sales minus discounts and returns, INR. Use as "revenue" for store sales unless asked for total_sales. TODO confirm which sales measure finance treats as revenue.
+      total_sales: Net sales plus shipping and taxes, INR.
+      orders: Number of orders represented by this row (can exceed 1). Use SUM(orders) for order counts.
+      items_sold: Units sold.
+      items_returned: Units returned.
+      new_customer_orders: Orders from first-time customers.
+      returning_customer_orders: Orders from returning customers.
+
+  dim_product:
+    description: >
+      Shopify products identified by title and type, e.g. kurta set, lehenga, co-ord, dress,
+      anarkali set. Use to break store sales down by product or product type. Join
+      fact_order_lines.product_key. Many rows have the title 'unknown' (missing in export).
+    synonyms: [products, items, SKUs, product type, categories, catalog, styles]
+    columns:
+      product_key: Surrogate primary key.
+      product_title: Product name, lowercase; 'unknown' when the export had no title.
+      product_type: Category such as 'kurta set', 'lehenga', 'co-ord', 'dress'. Null for about a fifth of products.
+      shopify_product_id: Shopify product id when present (null for about half of products).
