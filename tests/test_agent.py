@@ -67,3 +67,35 @@ def test_concurrent_asks_do_not_share_results(tools):
     a2, _ = make(tools, [call("run_sql", sql="SELECT 2 AS two"), text("b")])
     assert a1.ask("q1").columns == ["one"] and a2.ask("q2").columns == ["two"]
     assert tools.last_result is None
+
+
+def test_rate_limit_429_is_waited_out_not_fatal(tools, monkeypatch):
+    import agent.agent as agent_mod
+
+    class Quota(Exception):
+        code = 429
+    client = FakeGemini([text("done")])
+    real, state = client.models.generate_content, {"n": 0}
+
+    def flaky(**kw):
+        state["n"] += 1
+        if state["n"] <= 2:
+            raise Quota("429 RESOURCE_EXHAUSTED. Please retry in 0.5s.")
+        return real(**kw)
+    client.models.generate_content = flaky
+    monkeypatch.setattr(agent_mod.time, "sleep", lambda s: None)
+    res = Text2SQLAgent(tools, client, "fake").ask("hello there")
+    assert res.answer == "done" and state["n"] == 3
+
+
+def test_persistent_rate_limit_raises_a_clear_error(tools, monkeypatch):
+    import pytest
+    import agent.agent as agent_mod
+
+    class Quota(Exception):
+        code = 429
+    client = FakeGemini([])
+    client.models.generate_content = lambda **kw: (_ for _ in ()).throw(Quota("RESOURCE_EXHAUSTED"))
+    monkeypatch.setattr(agent_mod.time, "sleep", lambda s: None)
+    with pytest.raises(agent_mod.RateLimitedError):
+        Text2SQLAgent(tools, client, "fake").ask("hello there")

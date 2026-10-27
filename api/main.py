@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from agent.agent import Text2SQLAgent, build_agent
+from agent.agent import RateLimitedError, Text2SQLAgent, build_agent
 from agent.config import Settings
 from agent.tools import SchemaTools, build_tools
 
@@ -147,6 +147,8 @@ def ask(req: AskRequest, request: Request, agent: Text2SQLAgent = Depends(get_ag
         return AskResponse(**agent.ask(req.question).to_dict())
     except HTTPException:
         raise
+    except RateLimitedError as e:
+        raise HTTPException(status_code=429, detail=str(e)) from e
     except Exception as e:  # upstream (Gemini) or DB failure: surface a clean 502
         raise HTTPException(status_code=502, detail=f"Agent failed: {type(e).__name__}: {e}") from e
 

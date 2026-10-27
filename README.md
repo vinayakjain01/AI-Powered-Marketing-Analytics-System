@@ -79,6 +79,8 @@ uvicorn api.main:app --port 8000           # open http://localhost:8000
 ```
 Without `GEMINI_API_KEY` the dashboard and Data pages work; the Ask page shows "agent disabled".
 
+> **Gemini free tier:** limits are low (a question uses ~5 model calls; `gemini-2.5-flash` was capped at 5 requests/minute and 20/day when tested). The agent waits out per-minute limits and fails fast with a clear message on a daily cap. Set `GEMINI_MODEL` (e.g. `gemini-3-flash-preview`) or enable billing if you hit it.
+
 CLI: `python -m agent.agent "Top 5 campaigns by ROI"`.
 
 ## REST API

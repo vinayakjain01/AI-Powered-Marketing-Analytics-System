@@ -37,6 +37,11 @@ SQL rules:
     ROI  = (SUM(purchase_value) - SUM(amount_spent)) / NULLIF(SUM(amount_spent), 0)
   If a user says "ROI" use the ROI formula; mention ROAS when it helps. Treat NULL metrics as 0
   (COALESCE) and always GROUP BY the relevant dimension (campaign_name, geo_location_segment, ...).
+- Ranking by a ratio: a ratio is undefined (NULL) when its denominator is 0, and in PostgreSQL
+  ORDER BY ... DESC puts NULLs FIRST. So when ranking, exclude undefined ratios with
+  HAVING SUM(clicks) > 0 (or the relevant denominator) and add NULLS LAST. A NULL is never the
+  "worst" or "best" - for CPC the worst is the highest value among campaigns that had clicks.
+  Ignore trivially small samples when it matters (e.g. HAVING SUM(amount_spent) > 1000) and say so.
 - Shopify rows are pre-aggregated lines: use SUM(orders), never COUNT(*), for order counts.
 - Never infer dates or facts from campaign names. Amounts are in INR.
 - Prefer top-N results (LIMIT 5 or 10) for ranking questions and include spend, revenue and
@@ -90,6 +95,35 @@ def _extract_sql(text: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+class RateLimitedError(RuntimeError):
+    """The model API kept returning 429 after retries (e.g. free-tier requests-per-minute quota)."""
+
+
+def _retry_delay_s(exc: Exception, default: float = 12.0) -> float:
+    """Gemini's 429 body says 'Please retry in 6.17s' / retryDelay '6s'; honour it (plus a margin)."""
+    m = re.search(r"retry in (?:(\d+)h)?(?:(\d+)m)?([\d.]+)s", str(exc))
+    if not m:
+        return default
+    hours, minutes, seconds = (float(g or 0) for g in m.groups())
+    return hours * 3600 + minutes * 60 + seconds + 1.0
+
+
+def generate_with_retry(client, *, retries: int = 5, max_wait_s: float = 65.0, **kwargs):
+    """client.models.generate_content, waiting out 429 rate limits instead of failing the question."""
+    for attempt in range(retries + 1):
+        try:
+            return client.models.generate_content(**kwargs)
+        except Exception as e:  # google.genai.errors.ClientError carries .code == 429
+            if getattr(e, "code", None) != 429 and "RESOURCE_EXHAUSTED" not in str(e):
+                raise
+            delay = _retry_delay_s(e)
+            if attempt == retries or delay > max_wait_s:  # a long delay means a daily quota: do not wait
+                raise RateLimitedError(
+                    "The AI model's quota is used up (Gemini free tier). "
+                    f"Retry in about {max(1, round(delay / 60))} min, or set GEMINI_MODEL to another model.") from e
+            time.sleep(delay)
+
+
 class Text2SQLAgent:
     def __init__(self, tools: SchemaTools, client, model: str = "gemini-2.5-flash",
                  max_steps: int = 8, max_sql_attempts: int = 3):
@@ -123,7 +157,7 @@ class Text2SQLAgent:
         sql_failures = 0
 
         for step in range(1, self.max_steps + 1):
-            response = self.client.models.generate_content(model=self.model, contents=contents, config=config)
+            response = generate_with_retry(self.client, model=self.model, contents=contents, config=config)
             calls = response.function_calls or []
             if not calls:
                 return self._result(tools, response.text or "", trace, step)
